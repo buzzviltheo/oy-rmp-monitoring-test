@@ -295,8 +295,8 @@
     </section>
 
     <!-- Engagement depth -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="bg-surface rounded-xl border border-border p-5">
+    <section id="engagement-depth-section" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div id="ox-depth-card" class="bg-surface rounded-xl border border-border p-5">
         <div class="mb-3">
           <h3 class="text-sm font-semibold text-content">
             OX퀴즈 depth 도달률
@@ -307,7 +307,7 @@
         </div>
         <div style="height: 260px"><canvas id="ox-depth-chart"></canvas></div>
       </div>
-      <div class="bg-surface rounded-xl border border-border p-5">
+      <div id="vs-round-card" class="bg-surface rounded-xl border border-border p-5">
         <div class="mb-3">
           <h3 class="text-sm font-semibold text-content">VS형 라운드 도달률</h3>
           <p class="text-xs text-content-tertiary mt-0.5">
@@ -360,6 +360,19 @@
         </div>
         <div style="height: 200px"><canvas id="landing-chart"></canvas></div>
       </div>
+    </section>
+
+    <!-- Selections (visible only when a specific content/vs campaign is selected) -->
+    <section id="selections-section" class="hidden bg-surface rounded-xl border border-border p-5">
+      <div class="mb-4">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="kicker text-accent">선택지 분포</span>
+          <div class="h-px flex-1 bg-accent/20"></div>
+        </div>
+        <h3 class="text-sm font-semibold text-content">캠페인 선택지 텍스트별 선택 수</h3>
+        <p class="text-xs text-content-tertiary mt-0.5"><code>selected_text</code> attribute로 어떤 옵션이 선택됐는지 식별 — 특정 캠페인 선택 시에만 표시</p>
+      </div>
+      <div id="selections-content"></div>
     </section>
 
     <!-- Campaign table -->
@@ -483,6 +496,50 @@
     ];
     const baseDailyShares = [0.12, 0.14, 0.16, 0.15, 0.15, 0.14, 0.14];
     const dates = ["05-15", "05-16", "05-17", "05-18", "05-19", "05-20", "05-21"];
+
+    // Selection text data per campaign — selected_text values aggregated
+    // (content type: 4 options; vs type: per round, left vs right)
+    const SELECTIONS = {
+      1003: {
+        question: "가성비 좋은 스킨케어, 어떤 카테고리가 가장 끌리세요?",
+        options: [
+          { text: "토너", count: 720 },
+          { text: "에센스", count: 540 },
+          { text: "크림", count: 410 },
+          { text: "마스크팩", count: 380 },
+        ],
+      },
+      1004: {
+        question: "미세먼지 시즌, 가장 큰 피부 고민은?",
+        options: [
+          { text: "모공 막힘", count: 770 },
+          { text: "칙칙함", count: 580 },
+          { text: "트러블", count: 510 },
+          { text: "건조함", count: 340 },
+        ],
+      },
+      1008: {
+        question: "평소 자외선 차단제, 어떻게 발라요?",
+        options: [
+          { text: "외출 30분 전에 미리", count: 340 },
+          { text: "외출 직전에 발라요", count: 280 },
+          { text: "자주 덧발라요", count: 260 },
+          { text: "거의 안 발라요", count: 170 },
+        ],
+      },
+      1005: {
+        rounds: [
+          { round: 1, left: { text: "베리 슬리핑마스크", count: 3800 }, right: { text: "자몽 슬리핑마스크", count: 3000 } },
+          { round: 2, left: { text: "라벤더 슬리핑마스크", count: 2700 }, right: { text: "애플라임 슬리핑마스크", count: 2300 } },
+          { round: 3, left: { text: "베리 슬리핑마스크", count: 1850 }, right: { text: "라벤더 슬리핑마스크", count: 1450 } },
+        ],
+      },
+      1006: {
+        rounds: [
+          { round: 1, left: { text: "인바티 라이트", count: 1700 }, right: { text: "인바티 어드밴스드", count: 1500 } },
+        ],
+      },
+    };
 
     // ===== State =====
     const state = { adtype: "all", variation: "all", campaign: "all" };
@@ -707,11 +764,96 @@
       renderTimeseries();
       renderAdTypeDonut();
       renderAdTypeCompletion();
-      renderOxDepth();
-      renderVsRound();
+      renderEngagementDepth();
       renderConsent();
       renderLanding();
+      renderSelections();
       renderTable();
+    }
+
+    function renderEngagementDepth() {
+      const active = activeCampaigns();
+      const hasOx = active.some((c) => c.ad_type === "ox_quiz");
+      const hasVs = active.some((c) => c.ad_type === "vs");
+      document.getElementById("ox-depth-card").classList.toggle("hidden", !hasOx);
+      document.getElementById("vs-round-card").classList.toggle("hidden", !hasVs);
+      document
+        .getElementById("engagement-depth-section")
+        .classList.toggle("hidden", !hasOx && !hasVs);
+      if (hasOx) renderOxDepth();
+      if (hasVs) renderVsRound();
+    }
+
+    function renderSelections() {
+      const section = document.getElementById("selections-section");
+      if (state.campaign === "all") {
+        section.classList.add("hidden");
+        return;
+      }
+      const c = campaigns.find((x) => String(x.ad_id) === state.campaign);
+      if (!c || (c.ad_type !== "content" && c.ad_type !== "vs")) {
+        section.classList.add("hidden");
+        return;
+      }
+      const sel = SELECTIONS[c.ad_id];
+      if (!sel) {
+        section.classList.add("hidden");
+        return;
+      }
+      section.classList.remove("hidden");
+
+      const container = document.getElementById("selections-content");
+      let html = "";
+
+      if (c.ad_type === "content") {
+        const total = sel.options.reduce((s, o) => s + o.count, 0);
+        const sorted = [...sel.options].sort((a, b) => b.count - a.count);
+        html += `<p class="text-sm text-content-secondary mb-5 leading-relaxed"><span class="text-content-tertiary mr-1">질문:</span> ${sel.question}</p>`;
+        html += '<div class="space-y-3">';
+        sorted.forEach((o, i) => {
+          const pct = total > 0 ? ((o.count / total) * 100).toFixed(1) : "0.0";
+          const isTop = i === 0;
+          html += `<div class="flex items-center gap-4">
+            <div class="w-44 shrink-0 text-sm ${isTop ? "font-medium text-content" : "text-content-secondary"}">${isTop ? '<span class="text-accent mr-1">●</span>' : ""}${o.text}</div>
+            <div class="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
+              <div class="h-full ${isTop ? "bg-viz-60" : "bg-content-muted"} rounded-full transition-all" style="width:${pct}%"></div>
+            </div>
+            <div class="w-32 shrink-0 text-right text-sm tabular-nums ${isTop ? "font-medium text-content" : "text-content-secondary"}">${o.count.toLocaleString()} <span class="text-xs text-content-tertiary">(${pct}%)</span></div>
+          </div>`;
+        });
+        html += "</div>";
+      } else {
+        html += '<div class="space-y-6">';
+        sel.rounds.forEach((r, i) => {
+          const total = r.left.count + r.right.count;
+          const leftWin = r.left.count >= r.right.count;
+          const isFinal = sel.rounds.length > 1 && i === sel.rounds.length - 1;
+          const roundLabel = isFinal ? `Round ${r.round} (결승)` : `Round ${r.round}`;
+          const leftPct = ((r.left.count / total) * 100).toFixed(1);
+          const rightPct = ((r.right.count / total) * 100).toFixed(1);
+          html += `<div>
+            <div class="kicker text-content-tertiary mb-2">${roundLabel}</div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-4">
+                <div class="w-48 shrink-0 text-sm ${leftWin ? "font-medium text-content" : "text-content-secondary"}">${leftWin ? '<span class="text-accent mr-1">★</span>' : ""}${r.left.text}</div>
+                <div class="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
+                  <div class="h-full ${leftWin ? "bg-viz-60" : "bg-content-muted"} rounded-full" style="width:${leftPct}%"></div>
+                </div>
+                <div class="w-32 shrink-0 text-right text-sm tabular-nums ${leftWin ? "font-medium text-content" : "text-content-secondary"}">${r.left.count.toLocaleString()} <span class="text-xs text-content-tertiary">(${leftPct}%)</span></div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="w-48 shrink-0 text-sm ${!leftWin ? "font-medium text-content" : "text-content-secondary"}">${!leftWin ? '<span class="text-accent mr-1">★</span>' : ""}${r.right.text}</div>
+                <div class="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
+                  <div class="h-full ${!leftWin ? "bg-viz-60" : "bg-content-muted"} rounded-full" style="width:${rightPct}%"></div>
+                </div>
+                <div class="w-32 shrink-0 text-right text-sm tabular-nums ${!leftWin ? "font-medium text-content" : "text-content-secondary"}">${r.right.count.toLocaleString()} <span class="text-xs text-content-tertiary">(${rightPct}%)</span></div>
+              </div>
+            </div>
+          </div>`;
+        });
+        html += "</div>";
+      }
+      container.innerHTML = html;
     }
 
     // ===== Filter wiring =====
