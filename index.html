@@ -147,6 +147,24 @@
     </div>
     <div class="flex items-center gap-3">
       <div
+        class="flex items-center gap-1 rounded-lg border border-border bg-surface-tertiary p-0.5 text-xs"
+        role="group"
+        aria-label="집계 단위"
+      >
+        <button
+          id="mode-count"
+          class="px-3 py-1 rounded-md font-medium bg-surface text-content shadow-sm transition-colors"
+        >
+          카운트
+        </button>
+        <button
+          id="mode-uu"
+          class="px-3 py-1 rounded-md font-medium text-content-secondary hover:text-content transition-colors"
+        >
+          유니크 유저
+        </button>
+      </div>
+      <div
         class="flex items-center gap-2 rounded-lg border border-border bg-surface-tertiary px-3 py-1.5 text-sm text-content-secondary"
       >
         <span class="text-content-tertiary">기간</span>
@@ -434,15 +452,17 @@
       vs: "#10B981",
     };
     // ===== Dummy data =====
+    // Each campaign carries both total counts and unique user (UU) counts.
+    // UU funnel is a strict subset chain: imp_uu ≥ clk_uu ≥ result_uu ≥ complete_uu.
     const campaigns = [
-      { ad_id: 1001, name: "비오템 보습 OX퀴즈", ad_type: "ox_quiz", variation: "normal", impressions: 12500, ad_clicks: 5300, result_imp: 2800, reward_complete: 2350, ifa_yes: 5000, landing: "product" },
-      { ad_id: 1002, name: "아이오페 에어쿠션 OX퀴즈", ad_type: "ox_quiz", variation: "image", impressions: 18200, ad_clicks: 8400, result_imp: 4100, reward_complete: 3500, ifa_yes: 7600, landing: "exhibition" },
-      { ad_id: 1003, name: "더샘 가성비 콘텐츠", ad_type: "content", variation: "image_card", impressions: 9800, ad_clicks: 4100, result_imp: 2050, reward_complete: 1750, ifa_yes: 3500, landing: "product" },
-      { ad_id: 1004, name: "닥터지 미세먼지 콘텐츠", ad_type: "content", variation: "normal_list", impressions: 11200, ad_clicks: 4500, result_imp: 2200, reward_complete: 1850, ifa_yes: 4350, landing: "brand" },
-      { ad_id: 1005, name: "라네즈 이상형 월드컵", ad_type: "vs", variation: null, impressions: 14600, ad_clicks: 6800, result_imp: 2900, reward_complete: 2350, ifa_yes: 5000, landing: "exhibition" },
-      { ad_id: 1006, name: "아베다 케어 VS", ad_type: "vs", variation: null, impressions: 7800, ad_clicks: 3200, result_imp: 1300, reward_complete: 1050, ifa_yes: 2400, landing: "brand" },
-      { ad_id: 1007, name: "메디큐브 X 퀴즈", ad_type: "ox_quiz", variation: "image", impressions: 6300, ad_clicks: 2900, result_imp: 1500, reward_complete: 1300, ifa_yes: 2700, landing: "product" },
-      { ad_id: 1008, name: "셀퓨전씨 콘텐츠", ad_type: "content", variation: "icon_list", impressions: 5400, ad_clicks: 2100, result_imp: 1050, reward_complete: 880, ifa_yes: 2000, landing: "product" },
+      { ad_id: 1001, name: "비오템 보습 OX퀴즈",        ad_type: "ox_quiz", variation: "normal",      impressions: 12500, ad_clicks: 5300, result_imp: 2800, reward_complete: 2350, imp_uu: 4200, clk_uu: 3000, result_uu: 2200, complete_uu: 2050 },
+      { ad_id: 1002, name: "아이오페 에어쿠션 OX퀴즈",  ad_type: "ox_quiz", variation: "image",       impressions: 18200, ad_clicks: 8400, result_imp: 4100, reward_complete: 3500, imp_uu: 6050, clk_uu: 4800, result_uu: 3550, complete_uu: 3100 },
+      { ad_id: 1003, name: "더샘 가성비 콘텐츠",        ad_type: "content", variation: "image_card",  impressions: 9800,  ad_clicks: 4100, result_imp: 2050, reward_complete: 1750, imp_uu: 3300, clk_uu: 2400, result_uu: 1700, complete_uu: 1550 },
+      { ad_id: 1004, name: "닥터지 미세먼지 콘텐츠",    ad_type: "content", variation: "normal_list", impressions: 11200, ad_clicks: 4500, result_imp: 2200, reward_complete: 1850, imp_uu: 3700, clk_uu: 2700, result_uu: 1850, complete_uu: 1650 },
+      { ad_id: 1005, name: "라네즈 이상형 월드컵",      ad_type: "vs",      variation: null,          impressions: 14600, ad_clicks: 6800, result_imp: 2900, reward_complete: 2350, imp_uu: 4900, clk_uu: 3800, result_uu: 2450, complete_uu: 2100 },
+      { ad_id: 1006, name: "아베다 케어 VS",            ad_type: "vs",      variation: null,          impressions: 7800,  ad_clicks: 3200, result_imp: 1300, reward_complete: 1050, imp_uu: 2600, clk_uu: 1850, result_uu: 1100, complete_uu: 950  },
+      { ad_id: 1007, name: "메디큐브 X 퀴즈",           ad_type: "ox_quiz", variation: "image",       impressions: 6300,  ad_clicks: 2900, result_imp: 1500, reward_complete: 1300, imp_uu: 2100, clk_uu: 1700, result_uu: 1250, complete_uu: 1150 },
+      { ad_id: 1008, name: "셀퓨전씨 콘텐츠",           ad_type: "content", variation: "icon_list",   impressions: 5400,  ad_clicks: 2100, result_imp: 1050, reward_complete: 880,  imp_uu: 1800, clk_uu: 1230, result_uu: 870,  complete_uu: 780  },
     ];
     const baseDailyShares = [0.12, 0.14, 0.16, 0.15, 0.15, 0.14, 0.14];
     const dates = ["05-15", "05-16", "05-17", "05-18", "05-19", "05-20", "05-21"];
@@ -494,8 +514,16 @@
     };
 
     // ===== State =====
-    const state = { adtype: "all", variation: "all", campaign: "all" };
+    const state = { adtype: "all", variation: "all", campaign: "all", mode: "count" };
     const charts = {};
+
+    // Metric field mapping by mode. "imp/clk/result/complete" → actual field on campaign object.
+    const METRIC_FIELD = {
+      count: { imp: "impressions", clk: "ad_clicks", result: "result_imp", complete: "reward_complete" },
+      uu:    { imp: "imp_uu",      clk: "clk_uu",    result: "result_uu",  complete: "complete_uu" },
+    };
+    const isUU = () => state.mode === "uu";
+    const uuSuffix = () => (isUU() ? " (UU)" : "");
 
     function activeCampaigns() {
       return campaigns.filter((c) => {
@@ -506,6 +534,7 @@
       });
     }
     const sumBy = (arr, k) => arr.reduce((s, c) => s + c[k], 0);
+    const sumMetric = (arr, name) => sumBy(arr, METRIC_FIELD[state.mode][name]);
     const fmtNum = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : n.toLocaleString());
     const fmtPct = (p) => (p * 100).toFixed(1) + "%";
 
@@ -533,14 +562,15 @@
     // ===== Renderers =====
     function renderKpis() {
       const a = activeCampaigns();
-      const imp = sumBy(a, "impressions");
-      const clk = sumBy(a, "ad_clicks");
-      const cmp = sumBy(a, "reward_complete");
+      const imp = sumMetric(a, "imp");
+      const clk = sumMetric(a, "clk");
+      const cmp = sumMetric(a, "complete");
+      const sfx = uuSuffix();
       const cards = [
-        { label: "지면 노출", value: fmtNum(imp), trend: "+12.4%", positive: true },
-        { label: "클릭율", value: imp ? fmtPct(clk / imp) : "—", trend: "+1.8pp", positive: true },
-        { label: "참여 완료율", value: imp ? fmtPct(cmp / imp) : "—", trend: "+0.6pp", positive: true },
-        { label: "광고주 전달 트래픽", value: fmtNum(cmp), trend: "+8.2%", positive: true },
+        { label: "지면 노출" + sfx, value: fmtNum(imp), trend: "+12.4%", positive: true },
+        { label: "클릭율" + sfx, value: imp ? fmtPct(clk / imp) : "—", trend: "+1.8pp", positive: true },
+        { label: "참여 완료율" + sfx, value: imp ? fmtPct(cmp / imp) : "—", trend: "+0.6pp", positive: true },
+        { label: "광고주 전달 트래픽" + sfx, value: fmtNum(cmp), trend: "+8.2%", positive: true },
       ];
       document.getElementById("kpi-row").innerHTML = cards
         .map(
@@ -557,11 +587,11 @@
 
     function renderFunnel() {
       const a = activeCampaigns();
-      const imp = sumBy(a, "impressions");
-      const clk = sumBy(a, "ad_clicks");
-      const res = sumBy(a, "result_imp");
+      const imp = sumMetric(a, "imp");
+      const clk = sumMetric(a, "clk");
+      const res = sumMetric(a, "result");
       const btn = Math.round(res * 0.93);
-      const cmp = sumBy(a, "reward_complete");
+      const cmp = sumMetric(a, "complete");
       destroyChart("funnel");
       charts.funnel = new Chart(document.getElementById("funnel-chart"), {
         type: "bar",
@@ -575,8 +605,8 @@
 
     function renderTimeseries() {
       const a = activeCampaigns();
-      const tImp = sumBy(a, "impressions");
-      const tCmp = sumBy(a, "reward_complete");
+      const tImp = sumMetric(a, "imp");
+      const tCmp = sumMetric(a, "complete");
       const imps = baseDailyShares.map((s) => Math.round(tImp * s));
       const cmps = baseDailyShares.map((s, i) => Math.round(tCmp * s * (0.92 + ((i * 17) % 16) / 100)));
       destroyChart("ts");
@@ -585,8 +615,8 @@
         data: {
           labels: dates,
           datasets: [
-            { label: "지면 노출", data: imps, borderColor: "#A3A3A3", backgroundColor: "rgba(163,163,163,0.12)", tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: "#A3A3A3" },
-            { label: "참여 완료", data: cmps, borderColor: "#F97316", backgroundColor: "rgba(249,115,22,0.15)", tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: "#F97316" },
+            { label: "지면 노출" + uuSuffix(), data: imps, borderColor: "#A3A3A3", backgroundColor: "rgba(163,163,163,0.12)", tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: "#A3A3A3" },
+            { label: "참여 완료" + uuSuffix(), data: cmps, borderColor: "#F97316", backgroundColor: "rgba(249,115,22,0.15)", tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: "#F97316" },
           ],
         },
         options: commonOpts(),
@@ -595,7 +625,8 @@
 
     function renderAdTypeDonut() {
       const g = {};
-      activeCampaigns().forEach((c) => (g[c.ad_type] = (g[c.ad_type] || 0) + c.impressions));
+      const impField = METRIC_FIELD[state.mode].imp;
+      activeCampaigns().forEach((c) => (g[c.ad_type] = (g[c.ad_type] || 0) + c[impField]));
       const labels = Object.keys(g).map((k) => AD_TYPE_LABELS[k]);
       const colors = Object.keys(g).map((k) => AD_TYPE_COLOR[k]);
       destroyChart("donut");
@@ -616,10 +647,12 @@
 
     function renderAdTypeCompletion() {
       const g = {};
+      const impField = METRIC_FIELD[state.mode].imp;
+      const cmpField = METRIC_FIELD[state.mode].complete;
       activeCampaigns().forEach((c) => {
         if (!g[c.ad_type]) g[c.ad_type] = { i: 0, c: 0 };
-        g[c.ad_type].i += c.impressions;
-        g[c.ad_type].c += c.reward_complete;
+        g[c.ad_type].i += c[impField];
+        g[c.ad_type].c += c[cmpField];
       });
       const labels = Object.keys(g).map((k) => AD_TYPE_LABELS[k]);
       const data = Object.keys(g).map((k) => +((g[k].c / g[k].i) * 100).toFixed(1));
@@ -641,7 +674,7 @@
 
     function renderOxDepth() {
       const a = activeCampaigns().filter((c) => c.ad_type === "ox_quiz");
-      const clk = sumBy(a, "ad_clicks");
+      const clk = sumMetric(a, "clk");
       const d1 = clk;
       const d2 = Math.round(d1 * 0.72);
       const d3 = Math.round(d2 * 0.78);
@@ -655,7 +688,7 @@
 
     function renderVsRound() {
       const a = activeCampaigns().filter((c) => c.ad_type === "vs");
-      const clk = sumBy(a, "ad_clicks");
+      const clk = sumMetric(a, "clk");
       const r1 = clk;
       const r2 = Math.round(r1 * 0.68);
       const r3 = Math.round(r2 * 0.74);
@@ -673,17 +706,31 @@
       document.getElementById("campaign-tbody").innerHTML = a
         .map((c) => {
           const entry = c.ad_clicks / c.impressions;
+          const entryUu = c.imp_uu ? c.clk_uu / c.imp_uu : 0;
           const cmp = c.reward_complete / c.impressions;
+          const cmpUu = c.imp_uu ? c.complete_uu / c.imp_uu : 0;
           const color = AD_TYPE_COLOR[c.ad_type];
           return `<tr class="border-b border-border-row hover:bg-surface-secondary/50 transition-colors">
-            <td class="py-2.5 px-4 font-mono tabular-nums text-content-secondary">${c.ad_id}</td>
-            <td class="py-2.5 px-4 font-medium">${c.name}</td>
-            <td class="py-2.5 px-4"><span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium" style="background:${color}1f;color:${color}">${AD_TYPE_LABELS[c.ad_type]}</span></td>
-            <td class="py-2.5 px-4 text-content-secondary text-xs">${c.variation ? VARIATION_LABELS[c.variation] : "—"}</td>
-            <td class="py-2.5 px-4 text-right tabular-nums">${c.impressions.toLocaleString()}</td>
-            <td class="py-2.5 px-4 text-right tabular-nums">${fmtPct(entry)}</td>
-            <td class="py-2.5 px-4 text-right tabular-nums">${fmtPct(cmp)}</td>
-            <td class="py-2.5 px-4 text-right tabular-nums">${c.reward_complete.toLocaleString()}</td>
+            <td class="py-2.5 px-4 font-mono tabular-nums text-content-secondary align-top">${c.ad_id}</td>
+            <td class="py-2.5 px-4 font-medium align-top">${c.name}</td>
+            <td class="py-2.5 px-4 align-top"><span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium" style="background:${color}1f;color:${color}">${AD_TYPE_LABELS[c.ad_type]}</span></td>
+            <td class="py-2.5 px-4 text-content-secondary text-xs align-top">${c.variation ? VARIATION_LABELS[c.variation] : "—"}</td>
+            <td class="py-2.5 px-4 text-right tabular-nums align-top">
+              <div>${c.impressions.toLocaleString()}</div>
+              <div class="text-[11px] text-content-tertiary">${c.imp_uu.toLocaleString()} UU</div>
+            </td>
+            <td class="py-2.5 px-4 text-right tabular-nums align-top">
+              <div>${fmtPct(entry)}</div>
+              <div class="text-[11px] text-content-tertiary">${fmtPct(entryUu)} UU</div>
+            </td>
+            <td class="py-2.5 px-4 text-right tabular-nums align-top">
+              <div>${fmtPct(cmp)}</div>
+              <div class="text-[11px] text-content-tertiary">${fmtPct(cmpUu)} UU</div>
+            </td>
+            <td class="py-2.5 px-4 text-right tabular-nums align-top">
+              <div>${c.reward_complete.toLocaleString()}</div>
+              <div class="text-[11px] text-content-tertiary">${c.complete_uu.toLocaleString()} UU</div>
+            </td>
           </tr>`;
         })
         .join("");
@@ -855,6 +902,38 @@
       renderAll();
     });
     applyThemeIcons();
+
+    // ===== Mode toggle (카운트 / 유니크 유저) =====
+    const modeCountBtn = document.getElementById("mode-count");
+    const modeUuBtn = document.getElementById("mode-uu");
+    function applyModeButtons() {
+      const u = isUU();
+      // Active button gets bg-surface + text-content + shadow-sm
+      // Inactive gets text-content-secondary
+      modeCountBtn.className =
+        "px-3 py-1 rounded-md font-medium transition-colors " +
+        (u
+          ? "text-content-secondary hover:text-content"
+          : "bg-surface text-content shadow-sm");
+      modeUuBtn.className =
+        "px-3 py-1 rounded-md font-medium transition-colors " +
+        (u
+          ? "bg-surface text-content shadow-sm"
+          : "text-content-secondary hover:text-content");
+    }
+    modeCountBtn.addEventListener("click", () => {
+      if (state.mode === "count") return;
+      state.mode = "count";
+      applyModeButtons();
+      renderAll();
+    });
+    modeUuBtn.addEventListener("click", () => {
+      if (state.mode === "uu") return;
+      state.mode = "uu";
+      applyModeButtons();
+      renderAll();
+    });
+    applyModeButtons();
 
     // ===== Init =====
     refreshVariationOptions();
