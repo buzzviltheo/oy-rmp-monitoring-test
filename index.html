@@ -318,50 +318,6 @@
       </div>
     </section>
 
-    <!-- Consent + Landing -->
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="bg-surface rounded-xl border border-border p-5">
-        <div class="mb-3">
-          <h3 class="text-sm font-semibold text-content">맞춤형 동의 전환율</h3>
-          <p class="text-xs text-content-tertiary mt-0.5">
-            <code>ifa_provided=true</code> 비율
-          </p>
-        </div>
-        <div class="flex items-end gap-3 mt-4">
-          <span
-            id="consent-rate"
-            class="text-3xl font-semibold text-content font-mono tabular-nums"
-            >—</span
-          >
-          <span class="text-xs text-content-tertiary mb-1.5"
-            >ifa 전달 / 전체 노출</span
-          >
-        </div>
-        <div class="mt-4 h-2 rounded-full bg-surface-tertiary overflow-hidden">
-          <div
-            id="consent-bar"
-            class="h-full bg-viz-60 rounded-full transition-all"
-            style="width: 0%"
-          ></div>
-        </div>
-        <p class="text-[11px] text-content-tertiary mt-3 leading-relaxed">
-          맞춤형 광고 동의 바텀시트는 올리브영이 관리하므로, ifa 전달 여부로
-          간접 측정한다.
-        </p>
-      </div>
-      <div class="bg-surface rounded-xl border border-border p-5 lg:col-span-2">
-        <div class="mb-3">
-          <h3 class="text-sm font-semibold text-content">
-            광고주 페이지 랜딩 유형 분포
-          </h3>
-          <p class="text-xs text-content-tertiary mt-0.5">
-            <code>landing_type</code> 기준 — 적립 완료 후 자동 이동된 페이지
-          </p>
-        </div>
-        <div style="height: 200px"><canvas id="landing-chart"></canvas></div>
-      </div>
-    </section>
-
     <!-- Selections (visible only when a specific content/vs campaign is selected) -->
     <section id="selections-section" class="hidden bg-surface rounded-xl border border-border p-5">
       <div class="mb-4">
@@ -424,7 +380,7 @@
               <th
                 class="text-right py-2.5 px-4 text-xs font-medium text-content-tertiary"
               >
-                진입률
+                클릭율
               </th>
               <th
                 class="text-right py-2.5 px-4 text-xs font-medium text-content-tertiary"
@@ -477,12 +433,6 @@
       content: "#8B5CF6",
       vs: "#10B981",
     };
-    const LANDING_LABELS = {
-      product: "상품 상세",
-      exhibition: "기획전",
-      brand: "브랜드관",
-    };
-
     // ===== Dummy data =====
     const campaigns = [
       { ad_id: 1001, name: "비오템 보습 OX퀴즈", ad_type: "ox_quiz", variation: "normal", impressions: 12500, ad_clicks: 5300, result_imp: 2800, reward_complete: 2350, ifa_yes: 5000, landing: "product" },
@@ -536,7 +486,9 @@
       },
       1006: {
         rounds: [
-          { round: 1, left: { text: "인바티 라이트", count: 1700 }, right: { text: "인바티 어드밴스드", count: 1500 } },
+          { round: 1, left: { text: "인바티 라이트", count: 1750 }, right: { text: "인바티 어드밴스드", count: 1450 } },
+          { round: 2, left: { text: "다마지 컨디셔너", count: 1180 }, right: { text: "인바티 케어크림", count: 1060 } },
+          { round: 3, left: { text: "인바티 라이트", count: 870 }, right: { text: "다마지 컨디셔너", count: 740 } },
         ],
       },
     };
@@ -586,7 +538,7 @@
       const cmp = sumBy(a, "reward_complete");
       const cards = [
         { label: "지면 노출", value: fmtNum(imp), trend: "+12.4%", positive: true },
-        { label: "진입률", value: imp ? fmtPct(clk / imp) : "—", trend: "+1.8pp", positive: true },
+        { label: "클릭율", value: imp ? fmtPct(clk / imp) : "—", trend: "+1.8pp", positive: true },
         { label: "참여 완료율", value: imp ? fmtPct(cmp / imp) : "—", trend: "+0.6pp", positive: true },
         { label: "광고주 전달 트래픽", value: fmtNum(cmp), trend: "+8.2%", positive: true },
       ];
@@ -715,27 +667,6 @@
       });
     }
 
-    function renderConsent() {
-      const a = activeCampaigns();
-      const imp = sumBy(a, "impressions");
-      const ifa = sumBy(a, "ifa_yes");
-      const rate = imp > 0 ? ifa / imp : 0;
-      document.getElementById("consent-rate").textContent = imp > 0 ? fmtPct(rate) : "—";
-      document.getElementById("consent-bar").style.width = (rate * 100).toFixed(1) + "%";
-    }
-
-    function renderLanding() {
-      const g = {};
-      activeCampaigns().forEach((c) => (g[c.landing] = (g[c.landing] || 0) + c.reward_complete));
-      const labels = Object.keys(g).map((k) => LANDING_LABELS[k]);
-      destroyChart("landing");
-      charts.landing = new Chart(document.getElementById("landing-chart"), {
-        type: "bar",
-        data: { labels, datasets: [{ data: Object.values(g), backgroundColor: ["#F97316", "#8B5CF6", "#10B981"], borderRadius: 4, barThickness: 22 }] },
-        options: { ...commonOpts(), indexAxis: "y", plugins: { legend: { display: false }, tooltip: commonOpts().plugins.tooltip } },
-      });
-    }
-
     function renderTable() {
       const a = activeCampaigns();
       document.getElementById("campaign-count").textContent = a.length;
@@ -765,8 +696,6 @@
       renderAdTypeDonut();
       renderAdTypeCompletion();
       renderEngagementDepth();
-      renderConsent();
-      renderLanding();
       renderSelections();
       renderTable();
     }
@@ -832,7 +761,7 @@
           const leftPct = ((r.left.count / total) * 100).toFixed(1);
           const rightPct = ((r.right.count / total) * 100).toFixed(1);
           html += `<div>
-            <div class="kicker text-content-tertiary mb-2">${roundLabel}</div>
+            <div class="text-xs font-semibold text-content mb-2 uppercase tracking-wider">${roundLabel}</div>
             <div class="space-y-2">
               <div class="flex items-center gap-4">
                 <div class="w-48 shrink-0 text-sm ${leftWin ? "font-medium text-content" : "text-content-secondary"}">${leftWin ? '<span class="text-accent mr-1">★</span>' : ""}${r.left.text}</div>
