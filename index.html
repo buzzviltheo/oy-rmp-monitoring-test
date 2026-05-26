@@ -164,11 +164,23 @@
           유니크 유저
         </button>
       </div>
-      <div
-        class="flex items-center gap-2 rounded-lg border border-border bg-surface-tertiary px-3 py-1.5 text-sm text-content-secondary"
-      >
-        <span class="text-content-tertiary">기간</span>
-        <span class="font-medium text-content">최근 7일</span>
+      <div class="relative">
+        <button
+          id="period-btn"
+          class="flex items-center gap-2 rounded-lg border border-border bg-surface-tertiary px-3 py-1.5 text-sm hover:bg-surface transition-colors"
+        >
+          <span class="text-content-tertiary">기간</span>
+          <span id="period-label" class="font-medium text-content">최근 7일</span>
+          <span class="text-content-muted">·</span>
+          <span id="period-range" class="text-content-secondary text-xs">—</span>
+          <svg class="w-3 h-3 text-content-tertiary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        <div
+          id="period-menu"
+          class="hidden absolute right-0 top-full mt-2 w-48 rounded-lg border border-border bg-surface shadow-lg overflow-hidden z-50"
+        ></div>
       </div>
       <button
         id="theme-toggle"
@@ -464,8 +476,31 @@
       { ad_id: 1007, name: "메디큐브 X 퀴즈",           ad_type: "ox_quiz", variation: "image",       impressions: 6300,  ad_clicks: 2900, result_imp: 1500, reward_complete: 1300, imp_uu: 2100, clk_uu: 1700, result_uu: 1250, complete_uu: 1150 },
       { ad_id: 1008, name: "셀퓨전씨 콘텐츠",           ad_type: "content", variation: "icon_list",   impressions: 5400,  ad_clicks: 2100, result_imp: 1050, reward_complete: 880,  imp_uu: 1800, clk_uu: 1230, result_uu: 870,  complete_uu: 780  },
     ];
-    const baseDailyShares = [0.12, 0.14, 0.16, 0.15, 0.15, 0.14, 0.14];
-    const dates = ["05-15", "05-16", "05-17", "05-18", "05-19", "05-20", "05-21"];
+    // Base campaign metrics represent a 7-day period; other periods scale linearly.
+    const PERIOD_OPTIONS = [
+      { key: "1d",  days: 1,  label: "어제" },
+      { key: "7d",  days: 7,  label: "최근 7일" },
+      { key: "14d", days: 14, label: "최근 14일" },
+      { key: "30d", days: 30, label: "최근 30일" },
+    ];
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const formatMMDD = (d) => pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+    function getPeriodInfo() {
+      const opt = PERIOD_OPTIONS.find((p) => p.key === state.period) || PERIOD_OPTIONS[1];
+      const today = new Date();
+      const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1); // yesterday — today not viewable
+      const startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - (opt.days - 1));
+      const dates = [];
+      for (let i = 0; i < opt.days; i++) {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        dates.push(formatMMDD(d));
+      }
+      return { ...opt, startDate, endDate, dates };
+    }
+    const periodScale = () => getPeriodInfo().days / 7;
+    const scaled = (v) => Math.round(v * periodScale());
 
     // Selection text data per campaign — selected_text values aggregated
     // (content type: 4 options; vs type: per round, left vs right)
@@ -514,7 +549,7 @@
     };
 
     // ===== State =====
-    const state = { adtype: "all", variation: "all", campaign: "all", mode: "count" };
+    const state = { adtype: "all", variation: "all", campaign: "all", mode: "count", period: "7d" };
     const charts = {};
 
     // Metric field mapping by mode. "imp/clk/result/complete" → actual field on campaign object.
@@ -534,7 +569,7 @@
       });
     }
     const sumBy = (arr, k) => arr.reduce((s, c) => s + c[k], 0);
-    const sumMetric = (arr, name) => sumBy(arr, METRIC_FIELD[state.mode][name]);
+    const sumMetric = (arr, name) => Math.round(sumBy(arr, METRIC_FIELD[state.mode][name]) * periodScale());
     const fmtNum = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : n.toLocaleString());
     const fmtPct = (p) => (p * 100).toFixed(1) + "%";
 
@@ -607,13 +642,16 @@
       const a = activeCampaigns();
       const tImp = sumMetric(a, "imp");
       const tCmp = sumMetric(a, "complete");
-      const imps = baseDailyShares.map((s) => Math.round(tImp * s));
-      const cmps = baseDailyShares.map((s, i) => Math.round(tCmp * s * (0.92 + ((i * 17) % 16) / 100)));
+      const info = getPeriodInfo();
+      const n = info.days;
+      // Distribute totals across N days with a stable per-index jitter
+      const imps = info.dates.map((_, i) => Math.round((tImp / n) * (0.92 + ((i * 13) % 16) / 100)));
+      const cmps = info.dates.map((_, i) => Math.round((tCmp / n) * (0.90 + ((i * 17) % 18) / 100)));
       destroyChart("ts");
       charts.ts = new Chart(document.getElementById("timeseries-chart"), {
         type: "line",
         data: {
-          labels: dates,
+          labels: info.dates,
           datasets: [
             { label: "지면 노출" + uuSuffix(), data: imps, borderColor: "#A3A3A3", backgroundColor: "rgba(163,163,163,0.12)", tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: "#A3A3A3" },
             { label: "참여 완료" + uuSuffix(), data: cmps, borderColor: "#F97316", backgroundColor: "rgba(249,115,22,0.15)", tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: "#F97316" },
@@ -627,6 +665,7 @@
       const g = {};
       const impField = METRIC_FIELD[state.mode].imp;
       activeCampaigns().forEach((c) => (g[c.ad_type] = (g[c.ad_type] || 0) + c[impField]));
+      Object.keys(g).forEach((k) => (g[k] = scaled(g[k])));
       const labels = Object.keys(g).map((k) => AD_TYPE_LABELS[k]);
       const colors = Object.keys(g).map((k) => AD_TYPE_COLOR[k]);
       destroyChart("donut");
@@ -716,8 +755,8 @@
             <td class="py-2.5 px-4 align-top"><span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium" style="background:${color}1f;color:${color}">${AD_TYPE_LABELS[c.ad_type]}</span></td>
             <td class="py-2.5 px-4 text-content-secondary text-xs align-top">${c.variation ? VARIATION_LABELS[c.variation] : "—"}</td>
             <td class="py-2.5 px-4 text-right tabular-nums align-top">
-              <div>${c.impressions.toLocaleString()}</div>
-              <div class="text-[11px] text-content-tertiary">${c.imp_uu.toLocaleString()} UU</div>
+              <div>${scaled(c.impressions).toLocaleString()}</div>
+              <div class="text-[11px] text-content-tertiary">${scaled(c.imp_uu).toLocaleString()} UU</div>
             </td>
             <td class="py-2.5 px-4 text-right tabular-nums align-top">
               <div>${fmtPct(entry)}</div>
@@ -728,8 +767,8 @@
               <div class="text-[11px] text-content-tertiary">${fmtPct(cmpUu)} UU</div>
             </td>
             <td class="py-2.5 px-4 text-right tabular-nums align-top">
-              <div>${c.reward_complete.toLocaleString()}</div>
-              <div class="text-[11px] text-content-tertiary">${c.complete_uu.toLocaleString()} UU</div>
+              <div>${scaled(c.reward_complete).toLocaleString()}</div>
+              <div class="text-[11px] text-content-tertiary">${scaled(c.complete_uu).toLocaleString()} UU</div>
             </td>
           </tr>`;
         })
@@ -794,7 +833,7 @@
             <div class="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
               <div class="h-full ${isTop ? "bg-viz-60" : "bg-content-muted"} rounded-full transition-all" style="width:${pct}%"></div>
             </div>
-            <div class="w-32 shrink-0 text-right text-sm tabular-nums ${isTop ? "font-medium text-content" : "text-content-secondary"}">${o.count.toLocaleString()} <span class="text-xs text-content-tertiary">(${pct}%)</span></div>
+            <div class="w-32 shrink-0 text-right text-sm tabular-nums ${isTop ? "font-medium text-content" : "text-content-secondary"}">${scaled(o.count).toLocaleString()} <span class="text-xs text-content-tertiary">(${pct}%)</span></div>
           </div>`;
         });
         html += "</div>";
@@ -815,14 +854,14 @@
                 <div class="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
                   <div class="h-full ${leftWin ? "bg-viz-60" : "bg-content-muted"} rounded-full" style="width:${leftPct}%"></div>
                 </div>
-                <div class="w-32 shrink-0 text-right text-sm tabular-nums ${leftWin ? "font-medium text-content" : "text-content-secondary"}">${r.left.count.toLocaleString()} <span class="text-xs text-content-tertiary">(${leftPct}%)</span></div>
+                <div class="w-32 shrink-0 text-right text-sm tabular-nums ${leftWin ? "font-medium text-content" : "text-content-secondary"}">${scaled(r.left.count).toLocaleString()} <span class="text-xs text-content-tertiary">(${leftPct}%)</span></div>
               </div>
               <div class="flex items-center gap-4">
                 <div class="w-48 shrink-0 text-sm ${!leftWin ? "font-medium text-content" : "text-content-secondary"}">${!leftWin ? '<span class="text-accent mr-1">★</span>' : ""}${r.right.text}</div>
                 <div class="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
                   <div class="h-full ${!leftWin ? "bg-viz-60" : "bg-content-muted"} rounded-full" style="width:${rightPct}%"></div>
                 </div>
-                <div class="w-32 shrink-0 text-right text-sm tabular-nums ${!leftWin ? "font-medium text-content" : "text-content-secondary"}">${r.right.count.toLocaleString()} <span class="text-xs text-content-tertiary">(${rightPct}%)</span></div>
+                <div class="w-32 shrink-0 text-right text-sm tabular-nums ${!leftWin ? "font-medium text-content" : "text-content-secondary"}">${scaled(r.right.count).toLocaleString()} <span class="text-xs text-content-tertiary">(${rightPct}%)</span></div>
               </div>
             </div>
           </div>`;
@@ -934,6 +973,47 @@
       renderAll();
     });
     applyModeButtons();
+
+    // ===== Period selector =====
+    const periodBtn = document.getElementById("period-btn");
+    const periodMenu = document.getElementById("period-menu");
+    const periodLabel = document.getElementById("period-label");
+    const periodRange = document.getElementById("period-range");
+
+    function updatePeriodDisplay() {
+      const info = getPeriodInfo();
+      periodLabel.textContent = info.label;
+      periodRange.textContent =
+        info.days === 1
+          ? formatMMDD(info.endDate)
+          : formatMMDD(info.startDate) + " ~ " + formatMMDD(info.endDate);
+    }
+    function renderPeriodMenu() {
+      periodMenu.innerHTML = PERIOD_OPTIONS.map((opt) => {
+        const active = opt.key === state.period;
+        return `<button data-period="${opt.key}" class="period-option w-full text-left px-3 py-2 text-sm transition-colors ${active ? "bg-surface-tertiary text-content font-medium" : "text-content-secondary hover:bg-surface-tertiary hover:text-content"}">${opt.label}</button>`;
+      }).join("");
+      periodMenu.querySelectorAll(".period-option").forEach((b) => {
+        b.addEventListener("click", () => {
+          state.period = b.dataset.period;
+          periodMenu.classList.add("hidden");
+          updatePeriodDisplay();
+          renderPeriodMenu();
+          renderAll();
+        });
+      });
+    }
+    periodBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      periodMenu.classList.toggle("hidden");
+    });
+    document.addEventListener("click", (e) => {
+      if (!periodBtn.contains(e.target) && !periodMenu.contains(e.target)) {
+        periodMenu.classList.add("hidden");
+      }
+    });
+    updatePeriodDisplay();
+    renderPeriodMenu();
 
     // ===== Init =====
     refreshVariationOptions();
