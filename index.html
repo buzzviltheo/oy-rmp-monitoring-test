@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>올리브영 RMP 모니터링</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["Inter", "Noto Sans KR", "system-ui", "sans-serif"],
+            mono: ["Anonymous Pro", "monospace"],
+          },
+          colors: {
+            surface: {
+              DEFAULT: "var(--surface)",
+              secondary: "var(--surface-secondary)",
+              tertiary: "var(--surface-tertiary)",
+            },
+            border: {
+              DEFAULT: "var(--border)",
+              strong: "var(--border-strong)",
+              row: "var(--border-row)",
+            },
+            content: {
+              DEFAULT: "var(--content)",
+              secondary: "var(--content-secondary)",
+              tertiary: "var(--content-tertiary)",
+              muted: "var(--content-muted)",
+            },
+            accent: {
+              DEFAULT: "var(--accent)",
+              light: "var(--accent-light)",
+            },
+            viz: {
+              DEFAULT: "#F97316",
+              50: "#FB923C",
+              60: "#F97316",
+              70: "#EA580C",
+              light: "var(--viz-light)",
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --surface: #ffffff;
+      --surface-secondary: #fafafa;
+      --surface-tertiary: #f5f5f5;
+      --border: #e5e5e5;
+      --border-strong: #d4d4d4;
+      --border-row: #f0f0f0;
+      --content: #171717;
+      --content-secondary: #737373;
+      --content-tertiary: #a3a3a3;
+      --content-muted: #d4d4d4;
+      --accent: #ef4444;
+      --accent-light: #fef2f2;
+      --viz-light: #fff7ed;
+    }
+    .dark {
+      --surface: #1c1c1e;
+      --surface-secondary: #141416;
+      --surface-tertiary: #252528;
+      --border: #2c2c2e;
+      --border-strong: #3a3a3c;
+      --border-row: rgba(255, 255, 255, 0.06);
+      --content: #f5f5f5;
+      --content-secondary: #a1a1aa;
+      --content-tertiary: #71717a;
+      --content-muted: #3a3a3c;
+      --accent: #f87171;
+      --accent-light: rgba(239, 68, 68, 0.1);
+      --viz-light: rgba(249, 115, 22, 0.1);
+    }
+    body {
+      font-family: "Inter", "Noto Sans KR", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: var(--surface-secondary);
+      color: var(--content);
+    }
+    * {
+      transition: background-color 0.2s ease, border-color 0.2s ease,
+        color 0.2s ease;
+    }
+    .kicker {
+      font-family: "Anonymous Pro", monospace;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    select {
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      appearance: none;
+      padding-right: 30px;
+    }
+  </style>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("oyrmp-theme");
+        if (t === "dark") document.documentElement.classList.add("dark");
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <!-- TopBar -->
+  <header
+    class="bg-surface border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-50"
+  >
+    <div class="flex items-center gap-3">
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 1395 887"
+        xmlns="http://www.w3.org/2000/svg"
+        class="text-content"
+      >
+        <path
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+          d="M41.8181 230.081L-7.62572e-05 377.903L295.324 346.128L215.926 619.116C174.403 761.879 290.773 901.214 438.649 885.796L1171.68 809.366C1256.57 800.516 1327.58 741.026 1351.17 659.009L1394.38 508.743L1100.92 538.649L1178.46 266.811C1219.16 124.147 1102.65 -14.409 955.116 1.20647L221.222 78.8856C136.144 87.8907 65.1067 147.758 41.8181 230.081ZM887.842 282.577L588.779 314.352L506.537 604.069L803.731 572.294L887.842 282.577Z"
+          fill="currentColor"
+        />
+      </svg>
+      <div>
+        <h1 class="text-lg font-semibold text-content">올리브영 RMP 모니터링</h1>
+        <p class="text-xs text-content-secondary">
+          참여형 네이티브 광고 · BI 이벤트 기반
+        </p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div
+        class="flex items-center gap-2 rounded-lg border border-border bg-surface-tertiary px-3 py-1.5 text-sm text-content-secondary"
+      >
+        <span class="text-content-tertiary">기간</span>
+        <span class="font-medium text-content">최근 7일</span>
+      </div>
+      <button
+        id="theme-toggle"
+        class="rounded-lg border border-border bg-surface-tertiary p-2 text-content-secondary hover:text-content transition-colors"
+        aria-label="다크모드 토글"
+      >
+        <svg
+          id="icon-sun"
+          class="hidden w-4 h-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <path
+            d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+          />
+        </svg>
+        <svg
+          id="icon-moon"
+          class="w-4 h-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-[1600px] mx-auto px-4 xl:px-6 py-6 space-y-6">
+    <!-- Filters -->
+    <section class="bg-surface rounded-xl border border-border p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="kicker text-accent">필터</span>
+        <div class="h-px flex-1 bg-accent/20"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label
+            class="text-[10px] font-medium uppercase tracking-wider text-content-tertiary mb-1.5 block"
+            >광고 유형 (ad_type)</label
+          >
+          <select
+            id="filter-adtype"
+            class="w-full rounded-lg border border-border bg-surface-tertiary px-3 py-2 text-sm text-content outline-none focus:border-viz-60 transition-colors"
+          >
+            <option value="all">전체</option>
+            <option value="ox_quiz">OX퀴즈형</option>
+            <option value="content">콘텐츠 소비형</option>
+            <option value="vs">VS형</option>
+          </select>
+        </div>
+        <div>
+          <label
+            class="text-[10px] font-medium uppercase tracking-wider text-content-tertiary mb-1.5 block"
+            >상세 유형 (variation)</label
+          >
+          <select
+            id="filter-variation"
+            class="w-full rounded-lg border border-border bg-surface-tertiary px-3 py-2 text-sm text-content outline-none focus:border-viz-60 transition-colors"
+          >
+            <option value="all">전체</option>
+          </select>
+        </div>
+        <div>
+          <label
+            class="text-[10px] font-medium uppercase tracking-wider text-content-tertiary mb-1.5 block"
+            >캠페인 (라인아이템)</label
+          >
+          <select
+            id="filter-campaign"
+            class="w-full rounded-lg border border-border bg-surface-tertiary px-3 py-2 text-sm text-content outline-none focus:border-viz-60 transition-colors"
+          >
+            <option value="all">전체</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button
+            id="filter-reset"
+            class="rounded-lg border border-border bg-surface-tertiary px-4 py-2 text-sm text-content-secondary hover:text-content hover:bg-surface-secondary transition-colors w-full"
+          >
+            초기화
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      id="kpi-row"
+    ></section>
+
+    <!-- Funnel + Time series -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-surface rounded-xl border border-border p-5">
+        <div class="mb-3">
+          <h3 class="text-sm font-semibold text-content">참여 퍼널</h3>
+          <p class="text-xs text-content-tertiary mt-0.5">
+            지면 노출 → 광고 클릭 → 최종 화면 → 리워드 적립
+          </p>
+        </div>
+        <div style="height: 300px"><canvas id="funnel-chart"></canvas></div>
+      </div>
+      <div class="bg-surface rounded-xl border border-border p-5">
+        <div class="mb-3">
+          <h3 class="text-sm font-semibold text-content">일별 추이</h3>
+          <p class="text-xs text-content-tertiary mt-0.5">
+            지면 노출 · 참여 완료 (최근 7일)
+          </p>
+        </div>
+        <div style="height: 300px"><canvas id="timeseries-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Ad type distribution + completion -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="bg-surface rounded-xl border border-border p-5">
+        <div class="mb-3">
+          <h3 class="text-sm font-semibold text-content">
+            광고 유형별 노출 분포
+          </h3>
+          <p class="text-xs text-content-tertiary mt-0.5">ad_type 기준</p>
+        </div>
+        <div style="height: 260px"><canvas id="adtype-donut"></canvas></div>
+      </div>
+      <div class="bg-surface rounded-xl border border-border p-5 lg:col-span-2">
+        <div class="mb-3">
+          <h3 class="text-sm font-semibold text-content">
+            광고 유형별 참여 완료율
+          </h3>
+          <p class="text-xs text-content-tertiary mt-0.5">
+            노출 대비 reward_complete 비율
+          </p>
+        </div>
+        <div style="height: 260px"><canvas id="adtype-completion"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Engagement depth -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-surface rounded-xl border border-border p-5">
+        <div class="mb-3">
+          <h3 class="text-sm font-semibold text-content">
+            OX퀴즈 depth 도달률
+          </h3>
+          <p class="text-xs text-content-tertiary mt-0.5">
+            각 문항까지 도달한 유저 수 (3-depth 기준)
+          </p>
+        </div>
+        <div style="height: 260px"><canvas id="ox-depth-chart"></canvas></div>
+      </div>
+      <div class="bg-surface rounded-xl border border-border p-5">
+        <div class="mb-3">
+          <h3 class="text-sm font-semibold text-content">VS형 라운드 도달률</h3>
+          <p class="text-xs text-content-tertiary mt-0.5">
+            이상형 월드컵 대결 진행 (4강 기준)
+          </p>
+        </div>
+        <div style="height: 260px"><canvas id="vs-round-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Consent + Landing -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="bg-surface rounded-xl border border-border p-5">
+        <div class="mb-3">
+          <h3 class="text-sm font-semibold text-content">맞춤형 동의 전환율</h3>
+          <p class="text-xs text-content-tertiary mt-0.5">
+            <code>ifa_provided=true</code> 비율
+          </p>
+        </div>
+        <div class="flex items-end gap-3 mt-4">
+          <span
+            id="consent-rate"
+            class="text-3xl font-semibold text-content font-mono tabular-nums"
+            >—</span
+          >
+          <span class="text-xs text-content-tertiary mb-1.5"
+            >ifa 전달 / 전체 노출</span
+          >
+        </div>
+        <div class="mt-4 h-2 rounded-full bg-surface-tertiary overflow-hidden">
+          <div
+            id="consent-bar"
+            class="h-full bg-viz-60 rounded-full transition-all"
+            style="width: 0%"
+          ></div>
+        </div>
+        <p class="text-[11px] text-content-tertiary mt-3 leading-relaxed">
+          맞춤형 광고 동의 바텀시트는 올리브영이 관리하므로, ifa 전달 여부로
+          간접 측정한다.
+        </p>
+      </div>
+      <div class="bg-surface rounded-xl border border-border p-5 lg:col-span-2">
+        <div class="mb-3">
+          <h3 class="text-sm font-semibold text-content">
+            광고주 페이지 랜딩 유형 분포
+          </h3>
+          <p class="text-xs text-content-tertiary mt-0.5">
+            <code>landing_type</code> 기준 — 적립 완료 후 자동 이동된 페이지
+          </p>
+        </div>
+        <div style="height: 200px"><canvas id="landing-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Campaign table -->
+    <section class="bg-surface rounded-xl border border-border overflow-hidden">
+      <div
+        class="p-5 border-b border-border flex items-center justify-between gap-4"
+      >
+        <div>
+          <h3 class="text-sm font-semibold text-content">
+            캠페인(라인아이템) 성과
+          </h3>
+          <p class="text-xs text-content-tertiary mt-0.5">
+            <code>ad_id</code> 단위 집계
+          </p>
+        </div>
+        <div class="text-xs text-content-tertiary">
+          <span id="campaign-count">—</span>개 캠페인
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[1000px]">
+          <thead>
+            <tr class="border-b border-border bg-surface-secondary">
+              <th
+                class="text-left py-2.5 px-4 text-xs font-medium text-content-tertiary"
+              >
+                ad_id
+              </th>
+              <th
+                class="text-left py-2.5 px-4 text-xs font-medium text-content-tertiary"
+              >
+                캠페인
+              </th>
+              <th
+                class="text-left py-2.5 px-4 text-xs font-medium text-content-tertiary"
+              >
+                광고 유형
+              </th>
+              <th
+                class="text-left py-2.5 px-4 text-xs font-medium text-content-tertiary"
+              >
+                상세 유형
+              </th>
+              <th
+                class="text-right py-2.5 px-4 text-xs font-medium text-content-tertiary"
+              >
+                노출
+              </th>
+              <th
+                class="text-right py-2.5 px-4 text-xs font-medium text-content-tertiary"
+              >
+                진입률
+              </th>
+              <th
+                class="text-right py-2.5 px-4 text-xs font-medium text-content-tertiary"
+              >
+                완료율
+              </th>
+              <th
+                class="text-right py-2.5 px-4 text-xs font-medium text-content-tertiary"
+              >
+                광고주 트래픽
+              </th>
+            </tr>
+          </thead>
+          <tbody id="campaign-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer
+    class="border-t border-border bg-surface px-6 py-4 text-xs text-content-tertiary flex items-center justify-between mt-6"
+  >
+    <div>올리브영 RMP 모니터링 목업 · 더미 데이터</div>
+    <a
+      href="https://buzzvil.atlassian.net/wiki/spaces/DEM/pages/5073240427"
+      class="hover:text-content-secondary transition-colors"
+      target="_blank"
+      rel="noopener"
+      >BI 이벤트 설계 문서 →</a
+    >
+  </footer>
+
+  <script>
+    // ===== Labels & Colors =====
+    const AD_TYPE_LABELS = {
+      ox_quiz: "OX퀴즈형",
+      content: "콘텐츠 소비형",
+      vs: "VS형",
+    };
+    const VARIATION_LABELS = {
+      normal: "일반형",
+      image: "이미지형",
+      normal_card: "일반 카드형",
+      image_card: "이미지 카드형",
+      normal_list: "일반 리스트형",
+      icon_list: "아이콘 리스트형",
+    };
+    const AD_TYPE_COLOR = {
+      ox_quiz: "#F97316",
+      content: "#8B5CF6",
+      vs: "#10B981",
+    };
+    const LANDING_LABELS = {
+      product: "상품 상세",
+      exhibition: "기획전",
+      brand: "브랜드관",
+    };
+
+    // ===== Dummy data =====
+    const campaigns = [
+      { ad_id: 1001, name: "비오템 보습 OX퀴즈", ad_type: "ox_quiz", variation: "normal", impressions: 12500, ad_clicks: 5300, result_imp: 2800, reward_complete: 2350, ifa_yes: 5000, landing: "product" },
+      { ad_id: 1002, name: "아이오페 에어쿠션 OX퀴즈", ad_type: "ox_quiz", variation: "image", impressions: 18200, ad_clicks: 8400, result_imp: 4100, reward_complete: 3500, ifa_yes: 7600, landing: "exhibition" },
+      { ad_id: 1003, name: "더샘 가성비 콘텐츠", ad_type: "content", variation: "image_card", impressions: 9800, ad_clicks: 4100, result_imp: 2050, reward_complete: 1750, ifa_yes: 3500, landing: "product" },
+      { ad_id: 1004, name: "닥터지 미세먼지 콘텐츠", ad_type: "content", variation: "normal_list", impressions: 11200, ad_clicks: 4500, result_imp: 2200, reward_complete: 1850, ifa_yes: 4350, landing: "brand" },
+      { ad_id: 1005, name: "라네즈 이상형 월드컵", ad_type: "vs", variation: null, impressions: 14600, ad_clicks: 6800, result_imp: 2900, reward_complete: 2350, ifa_yes: 5000, landing: "exhibition" },
+      { ad_id: 1006, name: "아베다 케어 VS", ad_type: "vs", variation: null, impressions: 7800, ad_clicks: 3200, result_imp: 1300, reward_complete: 1050, ifa_yes: 2400, landing: "brand" },
+      { ad_id: 1007, name: "메디큐브 X 퀴즈", ad_type: "ox_quiz", variation: "image", impressions: 6300, ad_clicks: 2900, result_imp: 1500, reward_complete: 1300, ifa_yes: 2700, landing: "product" },
+      { ad_id: 1008, name: "셀퓨전씨 콘텐츠", ad_type: "content", variation: "icon_list", impressions: 5400, ad_clicks: 2100, result_imp: 1050, reward_complete: 880, ifa_yes: 2000, landing: "product" },
+    ];
+    const baseDailyShares = [0.12, 0.14, 0.16, 0.15, 0.15, 0.14, 0.14];
+    const dates = ["05-15", "05-16", "05-17", "05-18", "05-19", "05-20", "05-21"];
+
+    // ===== State =====
+    const state = { adtype: "all", variation: "all", campaign: "all" };
+    const charts = {};
+
+    function activeCampaigns() {
+      return campaigns.filter((c) => {
+        if (state.adtype !== "all" && c.ad_type !== state.adtype) return false;
+        if (state.variation !== "all" && (c.variation || "none") !== state.variation) return false;
+        if (state.campaign !== "all" && String(c.ad_id) !== state.campaign) return false;
+        return true;
+      });
+    }
+    const sumBy = (arr, k) => arr.reduce((s, c) => s + c[k], 0);
+    const fmtNum = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : n.toLocaleString());
+    const fmtPct = (p) => (p * 100).toFixed(1) + "%";
+
+    function cssVar(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+    function commonOpts(extra = {}) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400 },
+        plugins: {
+          legend: { labels: { color: cssVar("--content-secondary"), font: { family: "Inter", size: 12 }, boxWidth: 12, boxHeight: 12 } },
+          tooltip: { backgroundColor: cssVar("--surface"), titleColor: cssVar("--content"), bodyColor: cssVar("--content-secondary"), borderColor: cssVar("--border"), borderWidth: 1, padding: 10, titleFont: { family: "Inter", size: 12, weight: "600" }, bodyFont: { family: "Inter", size: 12 } },
+        },
+        scales: {
+          x: { ticks: { color: cssVar("--content-tertiary"), font: { family: "Inter", size: 12 } }, grid: { display: false } },
+          y: { ticks: { color: cssVar("--content-tertiary"), font: { family: "Inter", size: 12 } }, grid: { color: cssVar("--surface-tertiary") } },
+        },
+        ...extra,
+      };
+    }
+    const destroyChart = (id) => { if (charts[id]) { charts[id].destroy(); delete charts[id]; } };
+
+    // ===== Renderers =====
+    function renderKpis() {
+      const a = activeCampaigns();
+      const imp = sumBy(a, "impressions");
+      const clk = sumBy(a, "ad_clicks");
+      const cmp = sumBy(a, "reward_complete");
+      const cards = [
+        { label: "지면 노출", value: fmtNum(imp), trend: "+12.4%", positive: true },
+        { label: "진입률", value: imp ? fmtPct(clk / imp) : "—", trend: "+1.8pp", positive: true },
+        { label: "참여 완료율", value: imp ? fmtPct(cmp / imp) : "—", trend: "+0.6pp", positive: true },
+        { label: "광고주 전달 트래픽", value: fmtNum(cmp), trend: "+8.2%", positive: true },
+      ];
+      document.getElementById("kpi-row").innerHTML = cards
+        .map(
+          (d) => `<div class="bg-surface rounded-xl border border-border p-5 flex flex-col gap-3 min-w-0">
+          <div class="text-sm font-medium text-content-secondary truncate">${d.label}</div>
+          <div class="flex items-end justify-between gap-4">
+            <div class="text-2xl font-semibold text-content tracking-tight font-mono tabular-nums">${d.value}</div>
+            <div class="text-xs font-medium ${d.positive ? "text-accent" : "text-content-tertiary"}">${d.positive ? "▲" : "▼"} ${d.trend}</div>
+          </div>
+        </div>`
+        )
+        .join("");
+    }
+
+    function renderFunnel() {
+      const a = activeCampaigns();
+      const imp = sumBy(a, "impressions");
+      const clk = sumBy(a, "ad_clicks");
+      const res = sumBy(a, "result_imp");
+      const btn = Math.round(res * 0.93);
+      const cmp = sumBy(a, "reward_complete");
+      destroyChart("funnel");
+      charts.funnel = new Chart(document.getElementById("funnel-chart"), {
+        type: "bar",
+        data: {
+          labels: ["지면 노출", "광고 클릭", "최종 화면 노출", "리워드 버튼 클릭", "리워드 적립 완료"],
+          datasets: [{ data: [imp, clk, res, btn, cmp], backgroundColor: "#F97316", borderRadius: 4, barThickness: 22 }],
+        },
+        options: commonOpts({ indexAxis: "y", plugins: { legend: { display: false }, tooltip: commonOpts().plugins.tooltip } }),
+      });
+    }
+
+    function renderTimeseries() {
+      const a = activeCampaigns();
+      const tImp = sumBy(a, "impressions");
+      const tCmp = sumBy(a, "reward_complete");
+      const imps = baseDailyShares.map((s) => Math.round(tImp * s));
+      const cmps = baseDailyShares.map((s, i) => Math.round(tCmp * s * (0.92 + ((i * 17) % 16) / 100)));
+      destroyChart("ts");
+      charts.ts = new Chart(document.getElementById("timeseries-chart"), {
+        type: "line",
+        data: {
+          labels: dates,
+          datasets: [
+            { label: "지면 노출", data: imps, borderColor: "#A3A3A3", backgroundColor: "rgba(163,163,163,0.12)", tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: "#A3A3A3" },
+            { label: "참여 완료", data: cmps, borderColor: "#F97316", backgroundColor: "rgba(249,115,22,0.15)", tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: "#F97316" },
+          ],
+        },
+        options: commonOpts(),
+      });
+    }
+
+    function renderAdTypeDonut() {
+      const g = {};
+      activeCampaigns().forEach((c) => (g[c.ad_type] = (g[c.ad_type] || 0) + c.impressions));
+      const labels = Object.keys(g).map((k) => AD_TYPE_LABELS[k]);
+      const colors = Object.keys(g).map((k) => AD_TYPE_COLOR[k]);
+      destroyChart("donut");
+      charts.donut = new Chart(document.getElementById("adtype-donut"), {
+        type: "doughnut",
+        data: { labels, datasets: [{ data: Object.values(g), backgroundColor: colors, borderWidth: 0 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "62%",
+          plugins: {
+            legend: { position: "right", labels: { color: cssVar("--content-secondary"), font: { family: "Inter", size: 12 }, boxWidth: 12, boxHeight: 12 } },
+            tooltip: commonOpts().plugins.tooltip,
+          },
+        },
+      });
+    }
+
+    function renderAdTypeCompletion() {
+      const g = {};
+      activeCampaigns().forEach((c) => {
+        if (!g[c.ad_type]) g[c.ad_type] = { i: 0, c: 0 };
+        g[c.ad_type].i += c.impressions;
+        g[c.ad_type].c += c.reward_complete;
+      });
+      const labels = Object.keys(g).map((k) => AD_TYPE_LABELS[k]);
+      const data = Object.keys(g).map((k) => +((g[k].c / g[k].i) * 100).toFixed(1));
+      const colors = Object.keys(g).map((k) => AD_TYPE_COLOR[k]);
+      destroyChart("cmp");
+      charts.cmp = new Chart(document.getElementById("adtype-completion"), {
+        type: "bar",
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 4, barThickness: 38 }] },
+        options: {
+          ...commonOpts(),
+          plugins: { legend: { display: false }, tooltip: { ...commonOpts().plugins.tooltip, callbacks: { label: (ctx) => ctx.parsed.y + "%" } } },
+          scales: {
+            x: commonOpts().scales.x,
+            y: { ...commonOpts().scales.y, ticks: { ...commonOpts().scales.y.ticks, callback: (v) => v + "%" } },
+          },
+        },
+      });
+    }
+
+    function renderOxDepth() {
+      const a = activeCampaigns().filter((c) => c.ad_type === "ox_quiz");
+      const clk = sumBy(a, "ad_clicks");
+      const d1 = clk;
+      const d2 = Math.round(d1 * 0.72);
+      const d3 = Math.round(d2 * 0.78);
+      destroyChart("ox");
+      charts.ox = new Chart(document.getElementById("ox-depth-chart"), {
+        type: "bar",
+        data: { labels: ["depth 1", "depth 2", "depth 3"], datasets: [{ data: [d1, d2, d3], backgroundColor: "#F97316", borderRadius: 4, barThickness: 38 }] },
+        options: { ...commonOpts(), plugins: { legend: { display: false }, tooltip: commonOpts().plugins.tooltip } },
+      });
+    }
+
+    function renderVsRound() {
+      const a = activeCampaigns().filter((c) => c.ad_type === "vs");
+      const clk = sumBy(a, "ad_clicks");
+      const r1 = clk;
+      const r2 = Math.round(r1 * 0.68);
+      const r3 = Math.round(r2 * 0.74);
+      destroyChart("vs");
+      charts.vs = new Chart(document.getElementById("vs-round-chart"), {
+        type: "bar",
+        data: { labels: ["round 1", "round 2", "round 3 (결승)"], datasets: [{ data: [r1, r2, r3], backgroundColor: "#10B981", borderRadius: 4, barThickness: 38 }] },
+        options: { ...commonOpts(), plugins: { legend: { display: false }, tooltip: commonOpts().plugins.tooltip } },
+      });
+    }
+
+    function renderConsent() {
+      const a = activeCampaigns();
+      const imp = sumBy(a, "impressions");
+      const ifa = sumBy(a, "ifa_yes");
+      const rate = imp > 0 ? ifa / imp : 0;
+      document.getElementById("consent-rate").textContent = imp > 0 ? fmtPct(rate) : "—";
+      document.getElementById("consent-bar").style.width = (rate * 100).toFixed(1) + "%";
+    }
+
+    function renderLanding() {
+      const g = {};
+      activeCampaigns().forEach((c) => (g[c.landing] = (g[c.landing] || 0) + c.reward_complete));
+      const labels = Object.keys(g).map((k) => LANDING_LABELS[k]);
+      destroyChart("landing");
+      charts.landing = new Chart(document.getElementById("landing-chart"), {
+        type: "bar",
+        data: { labels, datasets: [{ data: Object.values(g), backgroundColor: ["#F97316", "#8B5CF6", "#10B981"], borderRadius: 4, barThickness: 22 }] },
+        options: { ...commonOpts(), indexAxis: "y", plugins: { legend: { display: false }, tooltip: commonOpts().plugins.tooltip } },
+      });
+    }
+
+    function renderTable() {
+      const a = activeCampaigns();
+      document.getElementById("campaign-count").textContent = a.length;
+      document.getElementById("campaign-tbody").innerHTML = a
+        .map((c) => {
+          const entry = c.ad_clicks / c.impressions;
+          const cmp = c.reward_complete / c.impressions;
+          const color = AD_TYPE_COLOR[c.ad_type];
+          return `<tr class="border-b border-border-row hover:bg-surface-secondary/50 transition-colors">
+            <td class="py-2.5 px-4 font-mono tabular-nums text-content-secondary">${c.ad_id}</td>
+            <td class="py-2.5 px-4 font-medium">${c.name}</td>
+            <td class="py-2.5 px-4"><span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium" style="background:${color}1f;color:${color}">${AD_TYPE_LABELS[c.ad_type]}</span></td>
+            <td class="py-2.5 px-4 text-content-secondary text-xs">${c.variation ? VARIATION_LABELS[c.variation] : "—"}</td>
+            <td class="py-2.5 px-4 text-right tabular-nums">${c.impressions.toLocaleString()}</td>
+            <td class="py-2.5 px-4 text-right tabular-nums">${fmtPct(entry)}</td>
+            <td class="py-2.5 px-4 text-right tabular-nums">${fmtPct(cmp)}</td>
+            <td class="py-2.5 px-4 text-right tabular-nums">${c.reward_complete.toLocaleString()}</td>
+          </tr>`;
+        })
+        .join("");
+    }
+
+    function renderAll() {
+      renderKpis();
+      renderFunnel();
+      renderTimeseries();
+      renderAdTypeDonut();
+      renderAdTypeCompletion();
+      renderOxDepth();
+      renderVsRound();
+      renderConsent();
+      renderLanding();
+      renderTable();
+    }
+
+    // ===== Filter wiring =====
+    function refreshVariationOptions() {
+      const sel = document.getElementById("filter-variation");
+      const set = new Set();
+      campaigns.forEach((c) => {
+        if (state.adtype === "all" || c.ad_type === state.adtype) {
+          if (c.variation) set.add(c.variation);
+        }
+      });
+      sel.innerHTML =
+        '<option value="all">전체</option>' +
+        [...set].map((v) => `<option value="${v}">${VARIATION_LABELS[v]}</option>`).join("");
+      sel.value = "all";
+      state.variation = "all";
+    }
+    function refreshCampaignOptions() {
+      const sel = document.getElementById("filter-campaign");
+      const filtered = campaigns.filter((c) => {
+        if (state.adtype !== "all" && c.ad_type !== state.adtype) return false;
+        if (state.variation !== "all" && (c.variation || "none") !== state.variation) return false;
+        return true;
+      });
+      sel.innerHTML =
+        '<option value="all">전체</option>' +
+        filtered.map((c) => `<option value="${c.ad_id}">${c.ad_id} · ${c.name}</option>`).join("");
+      sel.value = "all";
+      state.campaign = "all";
+    }
+
+    document.getElementById("filter-adtype").addEventListener("change", (e) => {
+      state.adtype = e.target.value;
+      refreshVariationOptions();
+      refreshCampaignOptions();
+      renderAll();
+    });
+    document.getElementById("filter-variation").addEventListener("change", (e) => {
+      state.variation = e.target.value;
+      refreshCampaignOptions();
+      renderAll();
+    });
+    document.getElementById("filter-campaign").addEventListener("change", (e) => {
+      state.campaign = e.target.value;
+      renderAll();
+    });
+    document.getElementById("filter-reset").addEventListener("click", () => {
+      state.adtype = "all";
+      state.variation = "all";
+      state.campaign = "all";
+      document.getElementById("filter-adtype").value = "all";
+      refreshVariationOptions();
+      refreshCampaignOptions();
+      renderAll();
+    });
+
+    // ===== Theme toggle =====
+    const themeToggle = document.getElementById("theme-toggle");
+    const iconSun = document.getElementById("icon-sun");
+    const iconMoon = document.getElementById("icon-moon");
+    function applyThemeIcons() {
+      const dark = document.documentElement.classList.contains("dark");
+      iconSun.classList.toggle("hidden", !dark);
+      iconMoon.classList.toggle("hidden", dark);
+    }
+    themeToggle.addEventListener("click", () => {
+      const dark = document.documentElement.classList.toggle("dark");
+      try { localStorage.setItem("oyrmp-theme", dark ? "dark" : "light"); } catch (e) {}
+      applyThemeIcons();
+      renderAll();
+    });
+    applyThemeIcons();
+
+    // ===== Init =====
+    refreshVariationOptions();
+    refreshCampaignOptions();
+    renderAll();
+  </script>
+</body>
+</html>
